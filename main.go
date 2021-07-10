@@ -4,11 +4,14 @@ import (
 	"fmt"
 	"image/color"
 	"log"
-	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/examples/resources/fonts"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"github.com/hajimehoshi/ebiten/v2/text"
+	"golang.org/x/image/font"
+	"golang.org/x/image/font/opentype"
 )
 
 // Dimensions
@@ -52,6 +55,7 @@ type Game struct {
 	board  [N * N]int
 	player int
 	state  int
+	font   font.Face
 }
 
 // Update proceeds the game state.
@@ -68,7 +72,7 @@ func (g *Game) Update() error {
 func (g *Game) Draw(screen *ebiten.Image) {
 	// Write your game's rendering.
 	g.board = [N * N]int{
-		EMPTY, EMPTY, PLAYER_X,
+		EMPTY, PLAYER_O, PLAYER_X,
 		EMPTY, EMPTY, EMPTY,
 		EMPTY, EMPTY, EMPTY,
 	}
@@ -96,11 +100,11 @@ func (g *Game) RenderBoard(screen *ebiten.Image, player_x_color, player_o_color 
 			case PLAYER_X:
 				g.RenderX(screen, i, j, player_x_color)
 
-			// case PLAYER_O:
-			// g.RenderO(screen, i, j, player_o_color)
+			case PLAYER_O:
+				g.RenderO(screen, i, j, player_o_color)
 
 			default:
-				fmt.Println("default")
+				// fmt.Println("default")
 			}
 		}
 	}
@@ -109,32 +113,23 @@ func (g *Game) RenderBoard(screen *ebiten.Image, player_x_color, player_o_color 
 func (g *Game) RenderX(screen *ebiten.Image, row, column int, player_x_color color.RGBA) {
 
 	var (
-		HALF_BOX_SIZE float64 = math.Min(float64(CELL_WIDTH), float64(CELL_HEIGHT)*0.25)
-		CENTER_X      float64 = CELL_WIDTH*0.5 + float64(column)*CELL_WIDTH
-		CENTER_Y      float64 = CELL_HEIGHT*0.5 + float64(row)*CELL_HEIGHT
+		// half_box_size float64 = math.Min(float64(CELL_WIDTH), float64(CELL_HEIGHT)*0.25)
+		center_x float64 = CELL_WIDTH*0.5 + float64(column)*CELL_WIDTH
+		center_y float64 = CELL_HEIGHT*0.5 + float64(row)*CELL_HEIGHT
 	)
 
-	// Draw line from top left to bottom right
-	ebitenutil.DrawLine(
-		screen,
-		CENTER_X-HALF_BOX_SIZE,
-		CENTER_Y-HALF_BOX_SIZE,
-		CENTER_X+HALF_BOX_SIZE,
-		CENTER_Y+HALF_BOX_SIZE,
-		player_x_color)
-
-	// Draw line from top right to bottom left to complete the X
-	ebitenutil.DrawLine(
-		screen,
-		CENTER_X+HALF_BOX_SIZE,
-		CENTER_Y-HALF_BOX_SIZE,
-		CENTER_X-HALF_BOX_SIZE,
-		CENTER_Y+HALF_BOX_SIZE,
-		player_x_color)
+	text.Draw(screen, "X", g.font, int(center_x-CELL_WIDTH*0.3), int(center_y+CELL_HEIGHT*0.28), player_x_color)
 }
 
-// func (g *Game) RenderO(row, column int, player_o_color, screen *ebiten.Image) {
-// }
+func (g *Game) RenderO(screen *ebiten.Image, row, column int, player_o_color color.RGBA) {
+	var (
+		// half_box_size float64 = math.Min(float64(CELL_WIDTH), float64(CELL_HEIGHT)*0.25)
+		center_x float64 = CELL_WIDTH*0.5 + float64(column)*CELL_WIDTH
+		center_y float64 = CELL_HEIGHT*0.5 + float64(row)*CELL_HEIGHT
+	)
+
+	text.Draw(screen, "O", g.font, int(center_x-CELL_WIDTH*0.3), int(center_y+CELL_HEIGHT*0.28), player_o_color)
+}
 
 // row, column int
 func (g *Game) MouseClickEvent() bool {
@@ -152,6 +147,24 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 
 func main() {
 	game := &Game{}
+
+	// Construct font
+	tt, err := opentype.Parse(fonts.MPlus1pRegular_ttf)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	const dpi = 72
+	font, err := opentype.NewFace(tt, &opentype.FaceOptions{
+		Size:    120,
+		DPI:     dpi,
+		Hinting: font.HintingFull,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	game.font = font
+
 	// Specify the window size as you like. Here, a doubled size is specified.
 	ebiten.SetWindowSize(SCREEN_WIDTH_PX, SCREEN_HEIGHT_PX)
 	ebiten.SetWindowTitle("Tic Tac Toe game")
