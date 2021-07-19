@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"image/color"
 	"log"
 
@@ -62,7 +61,12 @@ type Game struct {
 // Update is called every tick (1/60 [s] by default).
 func (g *Game) Update() error {
 	// Write your game's logical update.
-	g.MouseClickEvent()
+	if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
+		row, col := g.MouseClickEvent()
+
+		g.board[row*N+col] = g.player
+
+	}
 	return nil
 }
 
@@ -71,20 +75,12 @@ func (g *Game) Update() error {
 // Should not mutate the game state, just render the state
 func (g *Game) Draw(screen *ebiten.Image) {
 	// Write your game's rendering.
-	g.board = [N * N]int{
-		EMPTY, PLAYER_O, PLAYER_X,
-		EMPTY, EMPTY, EMPTY,
-		EMPTY, EMPTY, EMPTY,
-	}
 	g.player = PLAYER_X
 	g.state = int(IS_GAME_RUNNING)
 
 	g.RenderBoard(screen, player_x_color, player_o_color)
 	g.RenderGrid(screen)
 }
-
-// ebiten.CursorPosition(x, y int) {
-// }
 
 func (g *Game) RenderGrid(screen *ebiten.Image) {
 	for i := 1; i < N; i++ {
@@ -111,9 +107,7 @@ func (g *Game) RenderBoard(screen *ebiten.Image, player_x_color, player_o_color 
 }
 
 func (g *Game) RenderX(screen *ebiten.Image, row, column int, player_x_color color.RGBA) {
-
 	var (
-		// half_box_size float64 = math.Min(float64(CELL_WIDTH), float64(CELL_HEIGHT)*0.25)
 		center_x float64 = CELL_WIDTH*0.5 + float64(column)*CELL_WIDTH
 		center_y float64 = CELL_HEIGHT*0.5 + float64(row)*CELL_HEIGHT
 	)
@@ -123,7 +117,6 @@ func (g *Game) RenderX(screen *ebiten.Image, row, column int, player_x_color col
 
 func (g *Game) RenderO(screen *ebiten.Image, row, column int, player_o_color color.RGBA) {
 	var (
-		// half_box_size float64 = math.Min(float64(CELL_WIDTH), float64(CELL_HEIGHT)*0.25)
 		center_x float64 = CELL_WIDTH*0.5 + float64(column)*CELL_WIDTH
 		center_y float64 = CELL_HEIGHT*0.5 + float64(row)*CELL_HEIGHT
 	)
@@ -131,12 +124,15 @@ func (g *Game) RenderO(screen *ebiten.Image, row, column int, player_o_color col
 	text.Draw(screen, "O", g.font, int(center_x-CELL_WIDTH*0.3), int(center_y+CELL_HEIGHT*0.28), player_o_color)
 }
 
-// row, column int
-func (g *Game) MouseClickEvent() bool {
-	if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
-		fmt.Println("Mouse pressed")
-	}
-	return false
+func (g *Game) MouseClickEvent() (row, col int) {
+	// Get mouse coordinates in pixels
+	x, y := ebiten.CursorPosition()
+
+	// Location on our grid, 3x3 by default, possible value 0-2
+	col = x / CELL_WIDTH
+	row = y / CELL_HEIGHT
+
+	return row, col
 }
 
 // Layout takes the outside size (e.g., the window size) and returns the (logical) screen size.
@@ -147,6 +143,12 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 
 func main() {
 	game := &Game{}
+
+	game.board = [N * N]int{
+		EMPTY, EMPTY, EMPTY,
+		EMPTY, EMPTY, EMPTY,
+		EMPTY, EMPTY, EMPTY,
+	}
 
 	// Construct font
 	tt, err := opentype.Parse(fonts.MPlus1pRegular_ttf)
