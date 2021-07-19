@@ -66,7 +66,13 @@ func (g *Game) Update() error {
 
 		g.board[row*N+col] = g.player
 
+		if g.player == PLAYER_O {
+			g.player = PLAYER_X
+		} else if g.player == PLAYER_X {
+			g.player = PLAYER_O
+		}
 	}
+
 	return nil
 }
 
@@ -75,7 +81,6 @@ func (g *Game) Update() error {
 // Should not mutate the game state, just render the state
 func (g *Game) Draw(screen *ebiten.Image) {
 	// Write your game's rendering.
-	g.player = PLAYER_X
 	g.state = int(IS_GAME_RUNNING)
 
 	g.RenderBoard(screen, player_x_color, player_o_color)
@@ -143,6 +148,8 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 
 func main() {
 	game := &Game{}
+
+	game.player = PLAYER_X
 
 	game.board = [N * N]int{
 		EMPTY, EMPTY, EMPTY,
