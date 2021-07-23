@@ -101,21 +101,21 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	g.RenderGridColor(screen)
 }
 
-// TODO: Extract parts to their own methods to make this stuff neater
 func (g *Game) CheckWinConditions() {
-	var (
-		x_row_count   int = 0
-		x_col_count   int = 0
-		x_diag1_count int = 0
-		x_diag2_count int = 0
+	g.CheckVerticalAndHorizontalWin()
+	g.CheckDiagonalWin()
+	g.CheckIfTie()
+}
 
-		o_row_count   int = 0
-		o_col_count   int = 0
-		o_diag1_count int = 0
-		o_diag2_count int = 0
+func (g *Game) CheckVerticalAndHorizontalWin() {
+	var (
+		x_row_count int = 0
+		x_col_count int = 0
+
+		o_row_count int = 0
+		o_col_count int = 0
 	)
 
-	// Horizontal and vertical win conditions
 	for i := 0; i < N; i++ {
 		for j := 0; j < N; j++ {
 			if g.board[i*N+j] == PLAYER_X {
@@ -140,13 +140,24 @@ func (g *Game) CheckWinConditions() {
 			g.state = int(PLAYER_O_WON)
 		}
 
-		// Diagonal win conditions
 		x_row_count = 0
 		x_col_count = 0
 
 		o_row_count = 0
 		o_col_count = 0
+	}
+}
 
+func (g *Game) CheckDiagonalWin() {
+	var (
+		x_diag1_count int = 0
+		x_diag2_count int = 0
+
+		o_diag1_count int = 0
+		o_diag2_count int = 0
+	)
+
+	for i := 0; i < N; i++ {
 		if g.board[i*N+i] == PLAYER_X {
 			x_diag1_count++
 		}
@@ -160,15 +171,18 @@ func (g *Game) CheckWinConditions() {
 		if g.board[i*N+N-i-1] == PLAYER_O {
 			o_diag2_count++
 		}
-	}
-	if x_diag1_count == N || x_diag2_count == N {
-		g.state = int(PLAYER_X_WON)
-	}
-	if o_diag1_count == N || o_diag2_count == N {
-		g.state = int(PLAYER_O_WON)
-	}
 
-	// Tie state occurs if board has no empty cells and nobody has won
+		if x_diag1_count == N || x_diag2_count == N {
+			g.state = int(PLAYER_X_WON)
+		}
+		if o_diag1_count == N || o_diag2_count == N {
+			g.state = int(PLAYER_O_WON)
+		}
+	}
+}
+
+// Tie state occurs if board has no empty cells and nobody has won
+func (g *Game) CheckIfTie() {
 	var (
 		count int = 0
 		cell  int = EMPTY
@@ -183,100 +197,7 @@ func (g *Game) CheckWinConditions() {
 	if g.state != int(PLAYER_X_WON) && g.state != int(PLAYER_O_WON) && count == 0 {
 		g.state = int(GAME_IS_A_TIE)
 	}
-	// g.CheckVerticalAndHorizontalWin()
-	// g.CheckDiagonalWin()
-	// g.CheckIfTie()
 }
-
-// func (g *Game) CheckVerticalAndHorizontalWin() {
-// 	var (
-// 		x_row_count int = 0
-// 		x_col_count int = 0
-
-// 		o_row_count int = 0
-// 		o_col_count int = 0
-// 	)
-
-// 	// Horizontal and vertical win conditions
-// 	for i := 0; i < N; i++ {
-// 		for j := 0; j < N; j++ {
-// 			if g.board[i*N+j] == PLAYER_X {
-// 				x_row_count++
-// 			}
-// 			if g.board[i*N+j] == PLAYER_O {
-// 				o_row_count++
-// 			}
-
-// 			if g.board[j*N+i] == PLAYER_X {
-// 				x_col_count++
-// 			}
-// 			if g.board[j*N+i] == PLAYER_O {
-// 				o_col_count++
-// 			}
-// 		}
-
-// 		if x_row_count == N || x_col_count == N {
-// 			g.state = int(PLAYER_X_WON)
-// 		}
-// 		if o_row_count == N || o_col_count == N {
-// 			g.state = int(PLAYER_O_WON)
-// 		}
-// 	}
-
-// }
-
-// func (g *Game) CheckDiagonalWin() {
-// 	var (
-// 		x_diag1_count int = 0
-// 		x_diag2_count int = 0
-
-// 		o_diag1_count int = 0
-// 		o_diag2_count int = 0
-// 	)
-
-// 	for i := 0; i < N; i++ {
-// 		for j := 0; j < N; j++ {
-// 			if g.board[i*N+i] == PLAYER_X {
-// 				x_diag1_count++
-// 			}
-// 			if g.board[i*N+i] == PLAYER_O {
-// 				o_diag1_count++
-// 			}
-
-// 			if g.board[i*N+N-i-1] == PLAYER_X {
-// 				x_diag2_count++
-// 			}
-// 			if g.board[i*N+N-i-1] == PLAYER_O {
-// 				o_diag2_count++
-// 			}
-
-// 			if x_diag1_count == N || x_diag2_count == N {
-// 				g.state = int(PLAYER_X_WON)
-// 			}
-// 			if o_diag1_count == N || o_diag2_count == N {
-// 				g.state = int(PLAYER_O_WON)
-// 			}
-// 		}
-// 	}
-// }
-
-// func (g *Game) CheckIfTie() {
-// 	// Tie state occurs if board has no empty cells and nobody has won
-// 	var (
-// 		count int = 0
-// 		cell  int = EMPTY
-// 	)
-
-// 	for i := 0; i < N*N; i++ {
-// 		if g.board[i] == cell {
-// 			count++
-// 		}
-// 	}
-
-// 	if g.state != int(PLAYER_X_WON) && g.state != int(PLAYER_O_WON) && count == 0 {
-// 		g.state = int(GAME_IS_A_TIE)
-// 	}
-// }
 
 func (g *Game) RenderGrid(screen *ebiten.Image, color color.RGBA) {
 	for i := 1; i < N; i++ {
@@ -365,7 +286,6 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 	return outsideWidth, outsideHeight
 }
 
-// TODO: Clean up main content to their own methods where possible..
 func main() {
 	game := &Game{}
 
