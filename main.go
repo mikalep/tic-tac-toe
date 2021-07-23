@@ -28,9 +28,8 @@ type state int
 const (
 	PLAYER_X_WON state = iota
 	PLAYER_O_WON
-	IS_GAME_RUNNING
-	IS_GAME_A_TIE
-	IS_GAME_OVER
+	GAME_IS_RUNNING
+	GAME_IS_A_TIE
 )
 
 type board [N * N]int
@@ -45,6 +44,7 @@ const (
 // Colors
 var (
 	grid_color     = color.RGBA{0xff, 0xff, 0xff, 0xff} // white
+	tie_color      = color.RGBA{0x80, 0x80, 0x80, 0xff} // grey
 	player_x_color = color.RGBA{0x20, 0x4a, 0x87, 0xff} // blue
 	player_o_color = color.RGBA{0x73, 0xd2, 0x16, 0xff} // green
 )
@@ -60,9 +60,22 @@ type Game struct {
 // Update proceeds the game state.
 // Update is called every tick (1/60 [s] by default).
 func (g *Game) Update() error {
-	// Write your game's logical update.
 	if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
+
+		// Reset the board and start a new game when user clicks the board after someone won or a tie occurred
+		if g.state != int(GAME_IS_RUNNING) {
+			g.state = int(GAME_IS_RUNNING)
+			g.board = [N * N]int{}
+			g.player = PLAYER_X
+
+			return nil
+		}
+
 		row, col := g.MouseClickEvent()
+
+		if g.board[row*N+col] != EMPTY {
+			return nil
+		}
 
 		g.board[row*N+col] = g.player
 
@@ -70,6 +83,10 @@ func (g *Game) Update() error {
 			g.player = PLAYER_X
 		} else if g.player == PLAYER_X {
 			g.player = PLAYER_O
+		}
+
+		if g.state == int(GAME_IS_RUNNING) {
+			g.CheckWinConditions()
 		}
 	}
 
@@ -80,21 +97,208 @@ func (g *Game) Update() error {
 // Draw is called every frame (typically 1/60[s] for 60Hz display).
 // Should not mutate the game state, just render the state
 func (g *Game) Draw(screen *ebiten.Image) {
-	// Write your game's rendering.
-	g.state = int(IS_GAME_RUNNING)
-
-	g.RenderBoard(screen, player_x_color, player_o_color)
-	g.RenderGrid(screen)
+	g.RenderMarks(screen, player_x_color, player_o_color)
+	g.RenderGridColor(screen)
 }
 
-func (g *Game) RenderGrid(screen *ebiten.Image) {
+// TODO: Extract parts to their own methods to make this stuff neater
+func (g *Game) CheckWinConditions() {
+	var (
+		x_row_count   int = 0
+		x_col_count   int = 0
+		x_diag1_count int = 0
+		x_diag2_count int = 0
+
+		o_row_count   int = 0
+		o_col_count   int = 0
+		o_diag1_count int = 0
+		o_diag2_count int = 0
+	)
+
+	// Horizontal and vertical win conditions
+	for i := 0; i < N; i++ {
+		for j := 0; j < N; j++ {
+			if g.board[i*N+j] == PLAYER_X {
+				x_row_count++
+			}
+			if g.board[i*N+j] == PLAYER_O {
+				o_row_count++
+			}
+
+			if g.board[j*N+i] == PLAYER_X {
+				x_col_count++
+			}
+			if g.board[j*N+i] == PLAYER_O {
+				o_col_count++
+			}
+		}
+
+		if x_row_count == N || x_col_count == N {
+			g.state = int(PLAYER_X_WON)
+		}
+		if o_row_count == N || o_col_count == N {
+			g.state = int(PLAYER_O_WON)
+		}
+
+		// Diagonal win conditions
+		x_row_count = 0
+		x_col_count = 0
+
+		o_row_count = 0
+		o_col_count = 0
+
+		if g.board[i*N+i] == PLAYER_X {
+			x_diag1_count++
+		}
+		if g.board[i*N+i] == PLAYER_O {
+			o_diag1_count++
+		}
+
+		if g.board[i*N+N-i-1] == PLAYER_X {
+			x_diag2_count++
+		}
+		if g.board[i*N+N-i-1] == PLAYER_O {
+			o_diag2_count++
+		}
+	}
+	if x_diag1_count == N || x_diag2_count == N {
+		g.state = int(PLAYER_X_WON)
+	}
+	if o_diag1_count == N || o_diag2_count == N {
+		g.state = int(PLAYER_O_WON)
+	}
+
+	// Tie state occurs if board has no empty cells and nobody has won
+	var (
+		count int = 0
+		cell  int = EMPTY
+	)
+
+	for i := 0; i < N*N; i++ {
+		if g.board[i] == cell {
+			count++
+		}
+	}
+
+	if g.state != int(PLAYER_X_WON) && g.state != int(PLAYER_O_WON) && count == 0 {
+		g.state = int(GAME_IS_A_TIE)
+	}
+	// g.CheckVerticalAndHorizontalWin()
+	// g.CheckDiagonalWin()
+	// g.CheckIfTie()
+}
+
+// func (g *Game) CheckVerticalAndHorizontalWin() {
+// 	var (
+// 		x_row_count int = 0
+// 		x_col_count int = 0
+
+// 		o_row_count int = 0
+// 		o_col_count int = 0
+// 	)
+
+// 	// Horizontal and vertical win conditions
+// 	for i := 0; i < N; i++ {
+// 		for j := 0; j < N; j++ {
+// 			if g.board[i*N+j] == PLAYER_X {
+// 				x_row_count++
+// 			}
+// 			if g.board[i*N+j] == PLAYER_O {
+// 				o_row_count++
+// 			}
+
+// 			if g.board[j*N+i] == PLAYER_X {
+// 				x_col_count++
+// 			}
+// 			if g.board[j*N+i] == PLAYER_O {
+// 				o_col_count++
+// 			}
+// 		}
+
+// 		if x_row_count == N || x_col_count == N {
+// 			g.state = int(PLAYER_X_WON)
+// 		}
+// 		if o_row_count == N || o_col_count == N {
+// 			g.state = int(PLAYER_O_WON)
+// 		}
+// 	}
+
+// }
+
+// func (g *Game) CheckDiagonalWin() {
+// 	var (
+// 		x_diag1_count int = 0
+// 		x_diag2_count int = 0
+
+// 		o_diag1_count int = 0
+// 		o_diag2_count int = 0
+// 	)
+
+// 	for i := 0; i < N; i++ {
+// 		for j := 0; j < N; j++ {
+// 			if g.board[i*N+i] == PLAYER_X {
+// 				x_diag1_count++
+// 			}
+// 			if g.board[i*N+i] == PLAYER_O {
+// 				o_diag1_count++
+// 			}
+
+// 			if g.board[i*N+N-i-1] == PLAYER_X {
+// 				x_diag2_count++
+// 			}
+// 			if g.board[i*N+N-i-1] == PLAYER_O {
+// 				o_diag2_count++
+// 			}
+
+// 			if x_diag1_count == N || x_diag2_count == N {
+// 				g.state = int(PLAYER_X_WON)
+// 			}
+// 			if o_diag1_count == N || o_diag2_count == N {
+// 				g.state = int(PLAYER_O_WON)
+// 			}
+// 		}
+// 	}
+// }
+
+// func (g *Game) CheckIfTie() {
+// 	// Tie state occurs if board has no empty cells and nobody has won
+// 	var (
+// 		count int = 0
+// 		cell  int = EMPTY
+// 	)
+
+// 	for i := 0; i < N*N; i++ {
+// 		if g.board[i] == cell {
+// 			count++
+// 		}
+// 	}
+
+// 	if g.state != int(PLAYER_X_WON) && g.state != int(PLAYER_O_WON) && count == 0 {
+// 		g.state = int(GAME_IS_A_TIE)
+// 	}
+// }
+
+func (g *Game) RenderGrid(screen *ebiten.Image, color color.RGBA) {
 	for i := 1; i < N; i++ {
-		ebitenutil.DrawLine(screen, float64(i*CELL_WIDTH), 0, float64(i*CELL_WIDTH), SCREEN_HEIGHT_PX, grid_color)
-		ebitenutil.DrawLine(screen, 0, float64(i*CELL_HEIGHT), SCREEN_WIDTH_PX, float64(i*CELL_HEIGHT), grid_color)
+		ebitenutil.DrawLine(screen, float64(i*CELL_WIDTH), 0, float64(i*CELL_WIDTH), SCREEN_HEIGHT_PX, color)
+		ebitenutil.DrawLine(screen, 0, float64(i*CELL_HEIGHT), SCREEN_WIDTH_PX, float64(i*CELL_HEIGHT), color)
 	}
 }
 
-func (g *Game) RenderBoard(screen *ebiten.Image, player_x_color, player_o_color color.RGBA) {
+func (g *Game) RenderGridColor(screen *ebiten.Image) {
+	switch g.state {
+	case int(PLAYER_X_WON):
+		g.RenderGrid(screen, player_x_color)
+	case int(PLAYER_O_WON):
+		g.RenderGrid(screen, player_o_color)
+	case int(GAME_IS_A_TIE):
+		g.RenderGrid(screen, tie_color)
+	default:
+		g.RenderGrid(screen, grid_color)
+	}
+}
+
+func (g *Game) RenderMarks(screen *ebiten.Image, player_x_color, player_o_color color.RGBA) {
 	for i := 0; i < N; i++ {
 		for j := 0; j < N; j++ {
 			switch g.board[i*N+j] {
@@ -103,9 +307,6 @@ func (g *Game) RenderBoard(screen *ebiten.Image, player_x_color, player_o_color 
 
 			case PLAYER_O:
 				g.RenderO(screen, i, j, player_o_color)
-
-			default:
-				// fmt.Println("default")
 			}
 		}
 	}
@@ -133,11 +334,29 @@ func (g *Game) MouseClickEvent() (row, col int) {
 	// Get mouse coordinates in pixels
 	x, y := ebiten.CursorPosition()
 
-	// Location on our grid, 3x3 by default, possible value 0-2
+	// Location on our grid, 3x3 by default, possible values 0-2 when default grid
 	col = x / CELL_WIDTH
 	row = y / CELL_HEIGHT
 
 	return row, col
+}
+
+func (g *Game) constructFont() {
+	tt, err := opentype.Parse(fonts.MPlus1pRegular_ttf)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	const dpi = 72
+
+	g.font, err = opentype.NewFace(tt, &opentype.FaceOptions{
+		Size:    120,
+		DPI:     dpi,
+		Hinting: font.HintingFull,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 // Layout takes the outside size (e.g., the window size) and returns the (logical) screen size.
@@ -146,9 +365,11 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 	return outsideWidth, outsideHeight
 }
 
+// TODO: Clean up main content to their own methods where possible..
 func main() {
 	game := &Game{}
 
+	game.state = int(GAME_IS_RUNNING)
 	game.player = PLAYER_X
 
 	game.board = [N * N]int{
@@ -157,26 +378,12 @@ func main() {
 		EMPTY, EMPTY, EMPTY,
 	}
 
-	// Construct font
-	tt, err := opentype.Parse(fonts.MPlus1pRegular_ttf)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	const dpi = 72
-	font, err := opentype.NewFace(tt, &opentype.FaceOptions{
-		Size:    120,
-		DPI:     dpi,
-		Hinting: font.HintingFull,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	game.font = font
+	game.constructFont()
 
 	// Specify the window size as you like. Here, a doubled size is specified.
 	ebiten.SetWindowSize(SCREEN_WIDTH_PX, SCREEN_HEIGHT_PX)
 	ebiten.SetWindowTitle("Tic Tac Toe game")
+
 	// Call ebiten.RunGame to start your game loop.
 	if err := ebiten.RunGame(game); err != nil {
 		log.Fatal(err)
